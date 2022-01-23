@@ -39,5 +39,3 @@ class BertEncoder(nn.Module):
         bert_embed = last_hidden.sum(1)/lens.unsqueeze(-1)
         return bert_embed
 
-
-
