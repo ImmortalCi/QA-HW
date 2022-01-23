@@ -5,8 +5,8 @@ class BM25(object):
 
     def __init__(self, docs):
         self._D = len(docs)
-        self._d1 = torch.tensor([len(doc) for doc in docs])
-        self._avg_d1 = self._d1.sum().float() / self._D
+        self._dl = torch.tensor([len(doc) for doc in docs])
+        self._avg_dl = self._dl.sum().float() / self._D
         self._words = set([word.lower() for doc in docs for word in doc])
         self._word2id = {word: i for i, word in enumerate(self._words)}
         self._n_words = len(self._words)
@@ -42,7 +42,7 @@ class BM25(object):
         fi = self._f[:, word_ids].transpose(0, 1)
         fi[mask] = 0
 
-        k = self._k1 * (1 - self._b + self._b * self._d1 / self._avg_d1)
+        k = self._k1 * (1 - self._b + self._b * self._dl / self._avg_dl)
         r = (fi * (self._k1 + 1)) /(fi + k)
         idf = self._idf[word_ids]
 
