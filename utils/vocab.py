@@ -117,4 +117,3 @@ class Vocab(object):
             for line in f:
                 tokens.append(line.strip())
         return cls(tokens, tokenizer)
-    

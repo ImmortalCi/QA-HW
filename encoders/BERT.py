@@ -2,6 +2,7 @@ import torch.nn as nn
 
 from transformers import BertConfig, BertModel
 
+
 class BertEncoder(nn.Module):
     def __init__(self, path, pad_index=0):
         super(BertEncoder, self).__init__()
@@ -36,6 +37,5 @@ class BertEncoder(nn.Module):
         last_hidden = output['last_hidden_state']
         lens = bert_mask.sum(1)
         last_hidden[~bert_mask] = last_hidden[~bert_mask] * 0.0
-        bert_embed = last_hidden.sum(1)/lens.unsqueeze(-1)
+        bert_embed = last_hidden.sum(1) / lens.unsqueeze(-1)
         return bert_embed
-

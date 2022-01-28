@@ -1,14 +1,18 @@
 import os
-import random
 
 import torch
 from torch.nn import functional as F
 from torch.nn.utils import clip_grad_norm_
-from torch.nn.utils.rnn import pad_sequence
 from torch.optim import Adam
-from tqdm import tqdm
 
 from loguru import logger
+
+from utils.tokenizer import CharTokenizer, PretrainedTokenizer, jiebaTokenizer
+from utils.metric import PrecisionAtNum
+from utils.corpus import Corpus, TrainingSamples
+from utils.vocab import Vocab
+from utils.data import batchify, TextDataset
+
 
 class Recaller(object):
 
@@ -65,7 +69,7 @@ class Recaller(object):
         logger.info("暂时不用多线程")
 
         sent_ids, triplet = self._vocab.numericalize_triplets(training_triplet, n)
-        trainset = TestDataset(sent_ids, triplet)
+        trainset = TextDataset(sent_ids, triplet)
 
         train_loader = batchify(trainset, self._config.batch_size, shuffle=True, triplets=True)
         return train_loader

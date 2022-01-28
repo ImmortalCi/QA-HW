@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from .base import TextEncoder
+from base import TextEncoder
 
 class FastTextEncoder(TextEncoder):
 
