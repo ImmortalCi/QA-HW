@@ -3,10 +3,13 @@ import random
 
 import torch
 from torch.nn import functional as F
+from torch.nn.utils.rnn import pad_sequence
 from torch.nn.utils import clip_grad_norm_
 from torch.optim import Adam
 
 from loguru import logger
+
+from tqdm import tqdm
 
 from utils.tokenizer import CharTokenizer, PretrainedTokenizer, jiebaTokenizer
 from utils.metric import PrecisionAtNum
