@@ -1,4 +1,5 @@
 import os
+import random
 
 import torch
 from torch.nn import functional as F
@@ -14,6 +15,24 @@ from utils.vocab import Vocab
 from utils.data import batchify, TextDataset
 
 
+def compute_kl_loss(p, q, pad_mask=None):
+    p_loss = F.kl_div(F.log_softmax(p, dim=-1), F.softmax(q, dim=-1), reduction='none')
+    q_loss = F.kl_div(F.log_softmax(q, dim=-1), F.softmax(p, dim=-1), reduction='none')
+
+    p_loss = p_loss.sum(-1)
+    q_loss = q_loss.sum(-1)
+
+    if pad_mask is not None:
+        p_loss.masked_fill_(pad_mask, 0.)
+        q_loss.masked_fill_(pad_mask, 0.)
+
+    p_loss = p_loss.mean()
+    q_loss = q_loss.meac()
+
+    loss = (p_loss + q_loss) / 2
+    return loss
+
+
 class Recaller(object):
 
     def __init__(self, config, vocab, encoder, scorer, optimizer=None, scheduler=None):
@@ -25,6 +44,8 @@ class Recaller(object):
         self._scorer = scorer
         self._state = {}
         self._init_status()
+        self._loss_func = BatchHardTripletLoss(margin=self._config.margin)
+
 
     def _init_status(self):
         self._state['training'] = False
@@ -36,7 +57,25 @@ class Recaller(object):
         return self._config
 
     def _initialize(self, save_path, log_path, split_eval):
-        raise NotImplementedError
+        if self._config.device == 'cpu':
+            os.environ['CUDA_VISIBLE_DEVICES'] = ""
+        torch.set_num_threads(self._config.thread)
+        torch.manual_seed(self._config.seed)
+        random.seed(self._config.seed)
+
+        config_file = os.path.join(save_path, "config.ini")
+        vocab_file = os.path.join(save_path, self._config.vocab_file)
+        encoder_param = os.path.join(save_path, self._config.encoder_param_file)
+        scorer_param_path = os.path.join(save_path, self._config.scorer_param_file)
+        paths = {'config':config_file, 'vocab':vocab_file, 'encoder_param':encoder_param, 'scorer_param':scorer_param_path}
+        if self._config.encoder == "bert":
+            bert_config = os.path.join(save_path, self._config.bert_config)
+            paths['bert_config'] = bert_config
+        if split_eval:
+            log_file = os.path.join(log_path, 'eval.log')
+        else:
+            log_file = os.path.join(log_path, 'train.log')
+        logger.add(log_file, mode='w', level='INFO', format='{time:YYYY/MM/DD HH:mm:ss}-{level}:{message}')
 
     def _prepare_data(self, train_file, split_eval, k):
         logger.info("read pair training from training file")
@@ -64,12 +103,14 @@ class Recaller(object):
         training_triplet = TrainingSamples.from_corpus(train_pair, k)
         return training_triplet, train_pair, test_pair
 
-    def _numericalize(self, training_triplet, n):
-
+    # def _numericalize(self, training_triplet, n):
+    def _numericalize(self, training_pairs):
         logger.info("暂时不用多线程")
 
-        sent_ids, triplet = self._vocab.numericalize_triplets(training_triplet, n)
-        trainset = TextDataset(sent_ids, triplet)
+        # sent_ids, triplet = self._vocab.numericalize_triplets(training_triplet, n)
+        # trainset = TextDataset(sent_ids, triplet)
+
+        trainset = TextDataset(self._vocab.numericalize(training_pairs))
 
         train_loader = batchify(trainset, self._config.batch_size, shuffle=True, triplets=True)
         return train_loader
@@ -92,33 +133,66 @@ class Recaller(object):
 
         self._optimizer = Adam(self._encoder.parameters(), self._config.lr)
 
+    def compute_nce_loss(self, pair_scores, cluster_sizes):
+        pair_scores = pair_scores/self.config.temperature
+        pair_scores = pair_scores.fill_diagonal_(-10000)
+        n_clusters = len(cluster_sizes)
+        if n_clusters == 1:
+            return 0
+        scores = pair_scores.new_zeros((n_clusters, n_clusters), dtype=torch.float)
+        clusters = pair_scores.split(cluster_sizes, dim=0)
+        for i, cluster_score in enumerate(clusters):
+            cluster_pair_score = cluster_score.t().split(cluster_sizes, dim=0)
+            cluster_pair_score = pad_sequence(cluster_pair_score, True, padding_value=-10000)
+            sum_score = cluster_pair_score.max(dim=1)[0]
+            sum_score = sum_score.sum(-1)
+            scores[i] = sum_score
+        label = torch.arange(n_clusters).to(scores.device)
+        batch_loss = F.cross_entropy(scores, label)
+        return batch_loss, scores
+
+
 
     def _train_epoch(self, train_loader):
 
         loss = 0
 
-        for step, (querys, positives, negatives) in enumerate(train_loader):
+        # for step, (querys, positives, negatives) in enumerate(train_loader):
+        #     self._optimizer.zero_grad()
+        #     query_vecs = self._encoder(querys)
+        #     positive_vecs = self._encoder(positives)
+        #     negative_vecs = self._encoder(negatives)
+        #
+        #     positive_scores = self._scorer(query_vecs, positive_vecs)
+        #     negative_scores = self._scorer(query_vecs, negative_vecs)
+        #
+        #     pair_loss = self._config.margin - positive_scores + negative_scores
+        #     pair_loss = F.relu(pair_loss)
+        #
+        #     pair_loss.mean().backward()
+        #     loss += pair_loss.sum().item()
+        #     clip_grad_norm_(self._encoder.parameters(), self._config.clip)
+        #     self._optimizer.step()
+        #
+        #     if step % 1000 == 0:
+        #         logger.info(f'epoch: {epoch} training step: {step}')
+        # loss /= len(train_loader.dataset)
+        #
+        # return loss
+        for clusters, labels in tqdm(train_loader):
             self._optimizer.zero_grad()
-            query_vecs = self._encoder(querys)
-            positive_vecs = self._encoder(positives)
-            negative_vecs = self._encoder(negatives)
+            vecs = self._encoder(clusters)
+            batch_loss = self._loss_func(labels, vecs)
+            batch_loss.backward()
+            loss += batch_loss * len(clusters)
 
-            positive_scores = self._scorer(query_vecs, positive_vecs)
-            negative_scores = self._scorer(query_vecs, negative_vecs)
-
-            pair_loss = self._config.margin - positive_scores + negative_scores
-            pair_loss = F.relu(pair_loss)
-
-            pair_loss.mean().backward()
-            loss += pair_loss.sum().item()
             clip_grad_norm_(self._encoder.parameters(), self._config.clip)
+
             self._optimizer.step()
 
-            if step % 1000 == 0:
-                logger.info(f'epoch: {epoch} training step: {step}')
-        loss /= len(train_loader.dataset)
-
+        loss /=len(train_loader.dataset)
         return loss
+
 
     def train(self, train_file, save_path, log_path, split_eval=False):
         self._init_status()
@@ -137,6 +211,7 @@ class Recaller(object):
         self.save(save_path)
 
         prev_loss = float("inf")
+        best_recall = PrecisionAtNum(20)
         patience, best_e = 0, 1
 
         # 开始训练
