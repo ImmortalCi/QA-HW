@@ -16,6 +16,30 @@ from utils.metric import PrecisionAtNum
 from utils.corpus import Corpus, TrainingSamples
 from utils.vocab import Vocab
 from utils.data import batchify, TextDataset
+from utils.config import Config
+
+from encoders.BERT import BertEncoder
+from encoders.fast_text import FastTextEncoder
+
+str2encoder = {{"fast_text": FastTextEncoder, "bert": BertEncoder}}
+
+
+def cos_sim(a, b):
+    if not isinstance(a, torch.Tensor):
+        a = torch.tensor(a)
+
+    if not isinstance(b, torch.Tensor):
+        b = torch.tensor(b)
+
+    if len(a.shape) == 1:
+        a = a.unsqueeze(0)
+
+    if len(b.shape) == 1:
+        b = b.unsqueeze(0)
+
+    a_norm = F.normalize(a, p=2, dim=1)
+    b_norm = F.normalize(b, p=2, dim=1)
+    return torch.mm(a_norm, b_norm.transpose(0, 1))
 
 
 def compute_kl_loss(p, q, pad_mask=None):
@@ -49,7 +73,6 @@ class Recaller(object):
         self._init_status()
         self._loss_func = BatchHardTripletLoss(margin=self._config.margin)
 
-
     def _init_status(self):
         self._state['training'] = False
         self._state['epoch'] = 0
@@ -70,7 +93,8 @@ class Recaller(object):
         vocab_file = os.path.join(save_path, self._config.vocab_file)
         encoder_param = os.path.join(save_path, self._config.encoder_param_file)
         scorer_param_path = os.path.join(save_path, self._config.scorer_param_file)
-        paths = {'config':config_file, 'vocab':vocab_file, 'encoder_param':encoder_param, 'scorer_param':scorer_param_path}
+        paths = {'config': config_file, 'vocab': vocab_file, 'encoder_param': encoder_param,
+                 'scorer_param': scorer_param_path}
         if self._config.encoder == "bert":
             bert_config = os.path.join(save_path, self._config.bert_config)
             paths['bert_config'] = bert_config
@@ -123,21 +147,22 @@ class Recaller(object):
         if self._encoder is None:
             if self._config.encoder == "bert":
                 bert_path = self._config.bert_path
-                self._encoder =
+                self._encoder = str2encoder[self._config.encoder](bert_path)
                 self._encoder.load_pretrained(bert_path)
             else:
                 self._encoder = str2encoder[self._config.encoder](self._config)
                 if self._config.pretrained_embedding is not None and self._config.pretrained_vocab is not None:
-                    embedding = self._vocab.load_pretrained_embedding(self._config.pretrained_vocab, self._config.pretrained_embedding)
+                    embedding = self._vocab.load_pretrained_embedding(self._config.pretrained_vocab,
+                                                                      self._config.pretrained_embedding)
                     self._encoder.load_pretrained(embedding)
-            self._scorer = str2scprer[self._config.scorer](self._config)
+            self._scorer = str2scorer[self._config.scorer](self._config)
 
         self.to(self._config.device)
 
         self._optimizer = Adam(self._encoder.parameters(), self._config.lr)
 
     def compute_nce_loss(self, pair_scores, cluster_sizes):
-        pair_scores = pair_scores/self.config.temperature
+        pair_scores = pair_scores / self.config.temperature
         pair_scores = pair_scores.fill_diagonal_(-10000)
         n_clusters = len(cluster_sizes)
         if n_clusters == 1:
@@ -154,48 +179,45 @@ class Recaller(object):
         batch_loss = F.cross_entropy(scores, label)
         return batch_loss, scores
 
-
-
     def _train_epoch(self, train_loader):
 
         loss = 0
 
-        # for step, (querys, positives, negatives) in enumerate(train_loader):
-        #     self._optimizer.zero_grad()
-        #     query_vecs = self._encoder(querys)
-        #     positive_vecs = self._encoder(positives)
-        #     negative_vecs = self._encoder(negatives)
-        #
-        #     positive_scores = self._scorer(query_vecs, positive_vecs)
-        #     negative_scores = self._scorer(query_vecs, negative_vecs)
-        #
-        #     pair_loss = self._config.margin - positive_scores + negative_scores
-        #     pair_loss = F.relu(pair_loss)
-        #
-        #     pair_loss.mean().backward()
-        #     loss += pair_loss.sum().item()
-        #     clip_grad_norm_(self._encoder.parameters(), self._config.clip)
-        #     self._optimizer.step()
-        #
-        #     if step % 1000 == 0:
-        #         logger.info(f'epoch: {epoch} training step: {step}')
-        # loss /= len(train_loader.dataset)
-        #
-        # return loss
-        for clusters, labels in tqdm(train_loader):
+        for step, (querys, positives, negatives) in enumerate(train_loader):
             self._optimizer.zero_grad()
-            vecs = self._encoder(clusters)
-            batch_loss = self._loss_func(labels, vecs)
-            batch_loss.backward()
-            loss += batch_loss * len(clusters)
+            query_vecs = self._encoder(querys)
+            positive_vecs = self._encoder(positives)
+            negative_vecs = self._encoder(negatives)
 
+            positive_scores = self._scorer(query_vecs, positive_vecs)
+            negative_scores = self._scorer(query_vecs, negative_vecs)
+
+            pair_loss = self._config.margin - positive_scores + negative_scores
+            pair_loss = F.relu(pair_loss)
+
+            pair_loss.mean().backward()
+            loss += pair_loss.sum().item()
             clip_grad_norm_(self._encoder.parameters(), self._config.clip)
-
             self._optimizer.step()
 
-        loss /=len(train_loader.dataset)
-        return loss
+            if step % 1000 == 0:
+                logger.info(f'epoch: {epoch} training step: {step}')
+        loss /= len(train_loader.dataset)
 
+        return loss
+        # for clusters, labels in tqdm(train_loader):
+        #     self._optimizer.zero_grad()
+        #     vecs = self._encoder(clusters)
+        #     batch_loss = self._loss_func(labels, vecs)
+        #     batch_loss.backward()
+        #     loss += batch_loss * len(clusters)
+        #
+        #     clip_grad_norm_(self._encoder.parameters(), self._config.clip)
+        #
+        #     self._optimizer.step()
+        #
+        # loss /=len(train_loader.dataset)
+        # return loss
 
     def train(self, train_file, save_path, log_path, split_eval=False):
         self._init_status()
@@ -227,7 +249,7 @@ class Recaller(object):
             change = abs(loss - prev_loss)
 
             if loss >= prev_loss or change < self._config.threshold:
-                 patience += 1
+                patience += 1
             else:
                 patience = 0
                 # 保存模型

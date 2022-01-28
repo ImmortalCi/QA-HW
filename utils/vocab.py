@@ -1,9 +1,8 @@
 from collections import Counter
-from loguru import logger
 
 import torch
 from torch.nn.utils.rnn import pad_sequence
-from tqdm import tqdm
+
 
 class Vocab(object):
     _unk = "[UNK]"

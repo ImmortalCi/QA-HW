@@ -1,4 +1,3 @@
-import itertools
 import json
 import random
 from collections import namedtuple
