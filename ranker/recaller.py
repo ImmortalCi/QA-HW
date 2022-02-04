@@ -2,24 +2,21 @@ import os
 import random
 
 import torch
-from torch.nn import functional as F
-from torch.nn.utils.rnn import pad_sequence
-from torch.nn.utils import clip_grad_norm_
-from torch.optim import Adam
-
 from loguru import logger
-
+from torch.nn import functional as F
+from torch.nn.utils import clip_grad_norm_
+from torch.nn.utils.rnn import pad_sequence
+from torch.optim import Adam
 from tqdm import tqdm
 
-from utils.tokenizer import CharTokenizer, PretrainedTokenizer
-from utils.metric import PrecisionAtNum
-from utils.corpus import Corpus, TrainingSamples
-from utils.vocab import Vocab
-from utils.data import batchify, TextDataset
-from utils.config import Config
-
-from encoders.BERT import BertEncoder
-from encoders.fast_text import FastTextEncoder
+from .encoders.BERT import BertEncoder
+from .encoders.fast_text import FastTextEncoder
+from .utils.config import Config
+from .utils.corpus import Corpus, TrainingSamples
+from .utils.data import TextDataset, batchify
+from .utils.metric import PrecisionAtNum
+from .utils.tokenizer import CharTokenizer, PretrainedTokenizer
+from .utils.vocab import Vocab
 
 str2encoder = {"fast_text": FastTextEncoder, "bert": BertEncoder}
 

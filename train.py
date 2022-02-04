@@ -1,10 +1,11 @@
 import argparse
 import os
+
 import torch
 
-from recaller import Recaller
+from ranker.recaller import Recaller
+from ranker.utils.config import Config
 
-from utils.config import Config
 
 def main(config):
     recaller = Recaller(config, None, None, None)
