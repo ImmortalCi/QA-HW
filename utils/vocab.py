@@ -17,6 +17,7 @@ class Vocab(object):
     def n_tokens(self):
         return len(self._tokens)
 
+    @property
     def unk_index(self):
         return self._token_dict[self._unk]
 
@@ -44,17 +45,7 @@ class Vocab(object):
         labels = [torch.tensor([t[1] for t in seq.candidates], dtype=torch.long) for seq in corpus]
         return chars, candidates, labels
 
-    def _numericalize_triplets(self, triplets, query, positive, negative, n):
-        query_chars, positive_chars, negative_chars = [], [], []
-        for triplet in triplets:
-            query_chars.append(self.string2id(triplet.user_query, return_tensor=False))
-            positive_chars.append(self.string2id(triplet.positive_query, return_tensor=False))
-            negative_chars.append(self.string2id(triplet.negative_query, return_tensor=False))
-        query[n] = query_chars
-        positive[n] = positive_chars
-        negative[n] = negative_chars
-
-    def numericalize_triplets(self, triplets, n=5):
+    def numericalize_triplets(self, triplets):
         all_sentences = set()
         for triplet in triplets:
             all_sentences.add(triplet.user_query)
@@ -75,9 +66,9 @@ class Vocab(object):
     @classmethod
     def from_corpus(cls, tokenizer, corpus, min_freq=1):
         special_tokens = [cls._pad, cls._unk]
-        tokens = Counter(token.srip()
+        tokens = Counter(token.strip()
                          for seq in corpus.standards + corpus.extends for token in tokenizer.tokenize(seq)
-                         if len(token.srip()) > 0 and token.strip() not in special_tokens) # 过滤掉只包含空格的tokens
+                         if len(token.strip()) > 0 and token.strip() not in special_tokens) # 过滤掉只包含空格的tokens
         tokens = {token for token, freq in tokens.items() if freq>min_freq}
         tokens = special_tokens + sorted(tokens)
         vocab = cls(tokens, tokenizer)
