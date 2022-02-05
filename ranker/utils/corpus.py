@@ -3,7 +3,7 @@ import random
 from collections import namedtuple
 
 QueryPair = namedtuple(typename='QueryPair', field_names=['standard', 'extend'])
-Triplet = namedtuple(typename='triplet', field_names=['user_query', 'positive_query', 'negative_querys'])
+Triplet = namedtuple(typename='triplet', field_names=['user_query', 'positive_query', 'negative_query'])
 
 class Corpus(object):
     def __init__(self, pairs):
@@ -80,7 +80,7 @@ class TrainingSamples(object):
         return [t.negative_querys for t in self]
 
     @classmethod
-    def from_corpus(cls, corpus, k):
+    def from_corpus(cls, corpus):
         triplet = []
         total = sorted(set(corpus.standards) | set(corpus.extends))
         for pair in corpus:
@@ -88,16 +88,15 @@ class TrainingSamples(object):
             for extend in pair.extend:
                 if set(positive_cluster).issubset(set([extend])):
                     continue
-                for _ in range(k):
-                    while True:
-                        p = random.choice(positive_cluster)
-                        if p != extend:
-                            break
-                    while True:
-                        n = random.choice(total)
-                        if n not in positive_cluster:
-                            break
-                    triplet.append(Triplet(extend, p, n))
+                while True:
+                    p = random.choice(positive_cluster)
+                    if p != extend:
+                        break
+                while True:
+                    n = random.choice(total)
+                    if n not in positive_cluster:
+                        break
+                triplet.append(Triplet(extend, p, n))
         return cls(triplet)
 
     @classmethod
