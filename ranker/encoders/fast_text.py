@@ -37,7 +37,7 @@ class FastTextEncoder(TextEncoder):
         word_embed = self._dropout(word_embed)
         mask = texts.ne(self._pad_index)
         lens = mask.sum(-1)
-        word_embed = word_embed + mask.unsqueeze(-1)
+        word_embed = word_embed * mask.unsqueeze(-1)
         vecs = word_embed.sum(1) /lens.unsqueeze(-1)
         return vecs
 

@@ -105,7 +105,7 @@ class Recaller(object):
                 vocab_file = os.path.join(self._config.bert_path, "vocab.txt")
                 self._vocab = Vocab.from_file(vocab_file, tokenizer)
             else:
-                tokenizer = CharTokenizer(self._config.remove_punctuation)
+                tokenizer = CharTokenizer(self._config.remove_punctuation)  # 字符级分词器
                 self._vocab = Vocab.from_corpus(
                     tokenizer=tokenizer, corpus=train_pair, min_freq=1)
         self._config.update(
