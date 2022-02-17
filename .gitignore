@@ -1,3 +1,11 @@
 /demo.py
 save
 __pycache__
+/bert-base-chinese/
+/bert-base-chinese/vocab.txt
+/bert-base-chinese/tokenizer_config.json
+/bert-base-chinese/tokenizer.json
+/bert-base-chinese/README.md
+/bert-base-chinese/config.json
+/bert-base-chinese/.gitattributes
+/bert-base-chinese/pytorch_model.bin

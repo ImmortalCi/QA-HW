@@ -246,7 +246,7 @@ class Recaller(object):
             tokenizer = PretrainedTokenizer(path)
         else:
             tokenizer = CharTokenizer(
-                remoce_punct=ranker_config.remove_punctuation)
+                remove_punct=ranker_config.remove_punctuation)
 
         vocab = Vocab(vocab_path, tokenizer)
 
@@ -262,3 +262,24 @@ class Recaller(object):
 
         ranker = cls(config=ranker_config, vocab=vocab, encoder=encoder)
         return ranker
+
+    @torch.no_grad()
+    def encode(self, sents, batch_size=64):
+        self._encoder.eval()
+
+        device = next(self._encoder.parameters()).device
+        vecs, batch = [], []
+        for sent in sents:
+            tokens = self._vocab.string2id(sent)
+            batch.append(tokens)
+            if len(batch) == batch_size:
+                batch = pad_sequence(batch, True).to(device)
+                vec = self._encoder(batch)
+                vecs.append(vec)
+                batch = []
+        if len(batch) > 0:
+            batch = pad_sequence(batch, True).to(device)
+            vec = self._encoder(batch)
+
+        vecs = torch.cat(vecs, dim=0)
+        return vecs

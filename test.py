@@ -105,9 +105,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='faiss test'
     )
-    parser.add_argument('--train_file', default='data/1217-new/train.json',
+    parser.add_argument('--train_file', default='data/train.json',
                         help='train file')
-    parser.add_argument('--test_file', default='data/1217-new/test.json',
+    parser.add_argument('--test_file', default='data/train.json',
                         help='test file')
     parser.add_argument('--device', default='-1',
                         help='device')

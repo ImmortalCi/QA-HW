@@ -17,7 +17,7 @@ class PretrainedTokenizer:
         self._eos_token = self._tokenizer.sep_token
         self._remove_punc = remove_punct
 
-    def tokenizer(self, string, lower=True, add_special_token=True):
+    def tokenize(self, string, lower=True, add_special_token=True):
         if lower:
             string = string.lower()
         tokens = self._tokenizer.tokenize(string)

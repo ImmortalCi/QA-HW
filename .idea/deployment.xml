@@ -2,6 +2,13 @@
 <project version="4">
   <component name="PublishConfigData" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
+      <paths name="wtc_A100">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/wtc/QA-HW" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
       <paths name="wtc_TitanV">
         <serverdata>
           <mappings>
