@@ -4,6 +4,7 @@ import random
 import torch
 from loguru import logger
 from torch.nn import functional as F
+from torch.nn.functional import cosine_similarity
 from torch.nn.utils import clip_grad_norm_
 from torch.nn.utils.rnn import pad_sequence
 from torch.optim import Adam
@@ -145,8 +146,8 @@ class Recaller(object):
             positive_vecs = self._encoder(positives)
             negative_vecs = self._encoder(negatives)
 
-            positive_scores = cos_sim(query_vecs, positive_vecs)
-            negative_scores = cos_sim(query_vecs, negative_vecs)
+            positive_scores = cosine_similarity(query_vecs, positive_vecs)
+            negative_scores = cosine_similarity(query_vecs, negative_vecs)
 
             pair_loss = self._config.margin - positive_scores + negative_scores
             pair_loss = F.relu(pair_loss)
@@ -206,7 +207,7 @@ class Recaller(object):
             else:
                 patience = 0
                 # 保存模型
-                logger.info(f"epoch {epoch}: save the best model, loss={loss:.2f}")
+                logger.info(f"epoch {epoch}: save the best model, loss={loss:.4f}")
                 self.save(save_path)
                 best_e = epoch
                 prev_loss = float(loss)
@@ -248,7 +249,7 @@ class Recaller(object):
             tokenizer = CharTokenizer(
                 remove_punct=ranker_config.remove_punctuation)
 
-        vocab = Vocab(vocab_path, tokenizer)
+        vocab = Vocab.load(vocab_path, tokenizer)
 
         if ranker_config.encoder == 'bert':
             encoder = str2encoder[ranker_config.encoder].load(path)
@@ -280,6 +281,7 @@ class Recaller(object):
         if len(batch) > 0:
             batch = pad_sequence(batch, True).to(device)
             vec = self._encoder(batch)
+            vecs.append(vec)
 
         vecs = torch.cat(vecs, dim=0)
         return vecs
