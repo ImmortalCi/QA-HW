@@ -47,7 +47,41 @@ def get_search_result(test_data, BM25, extend2standard, k=30):
             else:
                 label.append(0)
         labels.append(label)
-    return labels
+
+    labels_standard = []
+    result = []
+    for query in querys:
+        all_candidates = BM25.simall(query, 'all')
+        candidates = []
+        finished = False
+        prev_standard = set()
+        for candidate_rp in all_candidates:
+            candidate = candidate_rp.sentence
+            standards = extend2standard.get(candidate, [candidate])
+
+            for standard in standards:
+                if standard not in prev_standard:
+                    prev_standard.add(standard)
+                    candidates.append(candidate_rp)
+
+            if len(prev_standard) >= k:
+                result.append(candidates)
+                finished = True
+                break
+        if not finished:
+            print(f'Sentence \'{candidate_rp.sentence}\' query only get {len(candidates)} candidates')
+            result.append(candidates)
+
+    for pred, gold in zip(result, golds):
+        label = []
+        for p in pred:
+            if p.sentence == gold or gold in extend2standard.get(p.sentence, []):
+                label.append(1)
+            else:
+                label.append(0)
+        labels_standard.append(label)
+
+    return labels, labels_standard
 
 
 class BM25(object):
@@ -92,8 +126,11 @@ class BM25(object):
         for index in range(self.D):
             rank_pair = self.sim(doc, index)
             rank_result.append(rank_pair)
-        rank_result.sort(key= lambda x:x.score, reverse=True)
-        return rank_result[:k]
+        rank_result.sort(key=lambda x: x.score, reverse=True)
+        if k == 'all':
+            return rank_result
+        else:
+            return rank_result[:k]
 
 
 if __name__ == '__main__':
@@ -121,7 +158,7 @@ if __name__ == '__main__':
                     f'warning: {extend} appear in more than one standard questions')
                 extend2standard[extend].append(standard)
 
-    labels = get_search_result(test_data, s, extend2standard, 30)
+    labels, labels_standard = get_search_result(test_data, s, extend2standard, 30)
 
     p1, p3 = PrecisionAtNum(1), PrecisionAtNum(3)
     p5, p10 = PrecisionAtNum(5), PrecisionAtNum(10)
@@ -139,8 +176,20 @@ if __name__ == '__main__':
     print(p10)
     print(p20)
     print(p30)
-
-
-
-
-
+    print()
+    p1, p3 = PrecisionAtNum(1), PrecisionAtNum(3)
+    p5, p10 = PrecisionAtNum(5), PrecisionAtNum(10)
+    p20, p30 = PrecisionAtNum(20), PrecisionAtNum(30)
+    for label in labels_standard:
+        p1(label)
+        p3(label)
+        p5(label)
+        p10(label)
+        p20(label)
+        p30(label)
+    print(p1)
+    print(p3)
+    print(p5)
+    print(p10)
+    print(p20)
+    print(p30)
