@@ -13,7 +13,7 @@ from tqdm import tqdm
 from .encoders.BERT import BertEncoder
 from .encoders.fast_text import FastTextEncoder
 from .utils.config import Config
-from .utils.corpus import Corpus, TrainingSamples
+from .utils.corpus import Corpus, TrainingSamples, QA_Corpus, query_id2str, answer_str
 from .utils.data import TextDataset, batchify
 from .utils.metric import PrecisionAtNum
 from .utils.tokenizer import CharTokenizer, PretrainedTokenizer
@@ -87,7 +87,13 @@ class Recaller(object):
 
     def _prepare_data(self, train_file, split_eval):
         logger.info("read pair training from training file")
-        train_pair = Corpus.load(train_file)
+        if self._config.match_mode == 'query_query':
+            train_pair = Corpus.load(train_file)
+        elif self._config.match_mode == 'query_answer':
+            train_pair = QA_Corpus.load(train_file)
+            queryid2str = query_id2str(self._config.question_file)
+            answerid2str = answer_str(self._config.answer_file)
+            logger.info("QA match mode, all corpus have been created")
         logger.info(f"There are total {len(train_pair)} here")
 
         if split_eval:
@@ -107,12 +113,22 @@ class Recaller(object):
                 self._vocab = Vocab.from_file(vocab_file, tokenizer)
             else:
                 tokenizer = CharTokenizer(self._config.remove_punctuation)  # 字符级分词器
-                self._vocab = Vocab.from_corpus(
-                    tokenizer=tokenizer, corpus=train_pair, min_freq=1)
+                if self._config.match_mode == 'query_query':
+                    self._vocab = Vocab.from_corpus(
+                        tokenizer=tokenizer, corpus=train_pair, min_freq=1)
+                elif self._config.match_mode == 'query_answer':
+                    self._vocab = Vocab.QA_from_corpus(
+                        tokenizer=tokenizer, corpus=train_pair, queryid2str=queryid2str, answerid2str=answerid2str)
         self._config.update(
             {'vocab_size': self._vocab.n_tokens, 'unk_index': self._vocab.unk_index})
         logger.info("Prepare triplets for training")
-        training_triplet = TrainingSamples.from_corpus(train_pair)
+        if self._config.match_mode == 'query_query':
+            if self._config.stage == 1:
+                training_triplet = TrainingSamples.from_corpus(train_pair)
+            elif self._config.stage == 2:
+                training_triplet = TrainingSamples.from_corpus_stage2(train_pair)
+        elif self._config.match_mode == 'query_answer':
+            training_triplet = TrainingSamples.QA_from_corpus(train_pair, queryid2str, answerid2str)
         return training_triplet, train_pair, test_pair
 
     def _numericalize(self, triplets):

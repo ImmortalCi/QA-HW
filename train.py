@@ -35,8 +35,16 @@ if __name__ == '__main__':
     parser.add_argument('--threshold', type=float)
 
     parser.add_argument('--save_path', help='save path')
-    parser.add_argument('--train_file', default='data/train.json')
+    parser.add_argument('--train_file', default='data/simCLUE_train.json')
     parser.add_argument('--test_file', default='data/test.json')
+
+    # 为了cmedQA而增加的几个argument
+    parser.add_argument('--match_mode', default='query_answer')
+    parser.add_argument('--question_file', default='data/question.csv')
+    parser.add_argument('--answer_file', default='data/answer.csv')
+
+    # 精排模型
+    parser.add_argument('--stage', default=1)  # 1代表初筛模型， 2代表精排模型
 
     args, _ = parser.parse_known_args()
     print(vars(args))

@@ -68,7 +68,7 @@ if __name__ == '__main__':
                         help='test file')
     parser.add_argument('--question', default='../../data/question.csv',
                         help='all questions')
-    parser.add_argument('--candidates_num', default='30',
+    parser.add_argument('--candidates_num', default=30, type=int,
                         help='the number of candidates')
 
     args, _ = parser.parse_known_args()

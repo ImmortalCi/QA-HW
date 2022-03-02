@@ -1,5 +1,5 @@
 from collections import Counter
-
+from tqdm import tqdm
 import torch
 from torch.nn.utils.rnn import pad_sequence
 
@@ -11,7 +11,7 @@ class Vocab(object):
     def __init__(self, tokens, tokenizer):
         self._tokens = tokens
         self._tokenizer = tokenizer
-        self._token_dict = {token: i for i,token in enumerate(self._tokens)}
+        self._token_dict = {token: i for i, token in enumerate(self._tokens)}
 
     @property
     def n_tokens(self):
@@ -68,8 +68,8 @@ class Vocab(object):
         special_tokens = [cls._pad, cls._unk]
         tokens = Counter(token.strip()
                          for seq in corpus.standards + corpus.extends for token in tokenizer.tokenize(seq)
-                         if len(token.strip()) > 0 and token.strip() not in special_tokens) # 过滤掉只包含空格的tokens
-        tokens = {token for token, freq in tokens.items() if freq>min_freq}
+                         if len(token.strip()) > 0 and token.strip() not in special_tokens)  # 过滤掉只包含空格的tokens
+        tokens = {token for token, freq in tokens.items() if freq > min_freq}
         tokens = special_tokens + sorted(tokens)
         vocab = cls(tokens, tokenizer)
         return vocab
@@ -84,6 +84,21 @@ class Vocab(object):
             tokens.insert(0, cls._pad)
         if cls._unk not in set(tokens):
             tokens.append(cls._unk)
+        vocab = cls(tokens, tokenizer)
+        return vocab
+
+    @classmethod
+    def QA_from_corpus(cls, tokenizer, corpus, queryid2str, answerid2str, min_freq=1):
+        special_tokens = [cls._pad, cls._unk]
+        tokens = Counter()
+        for QApair in tqdm(corpus):
+            qurry = queryid2str[QApair.query]
+            tokens.update(qurry)
+        all_answers = answerid2str
+        for answer in tqdm(all_answers):
+            tokens.update(answer)
+        tokens = {token for token, freq in tokens.items() if freq > min_freq}
+        tokens = special_tokens + sorted(tokens)
         vocab = cls(tokens, tokenizer)
         return vocab
 
