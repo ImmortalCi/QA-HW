@@ -40,7 +40,7 @@ class PrecisionAtNum(Metric):
         self._total = self._total + 1
 
     def __repr__(self):
-        return f"p@{self._num} acc: {self.accuracy:.2f}"
+        return f"r@{self._num} acc: {self.accuracy:.2%}\%"
 
     @property
     def score(self):

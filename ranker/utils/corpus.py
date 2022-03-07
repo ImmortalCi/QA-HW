@@ -108,14 +108,22 @@ class TrainingSamples(object):
         for pair in corpus:
             query = pair.standard
             neg = []
-            all_samples = pair.extend
+            all_samples = pair.extend[:20]  # list嵌套list，如果是标签，就多嵌套一层list
+            flag = False
             for sample in all_samples:
-                if type(sample) == list:
-                    pos = sample[1]
-                else:
-                    neg.append(sample)
-            for neg_sample in neg:
-                triplet.append(Triplet(query, pos, neg_sample))
+                if type(sample[1]) == list:  # 说明存在label
+                    flag = True
+                    break
+            if flag:
+                for sample in all_samples:
+                    if type(sample[1]) == list:
+                        pos = sample[1][0]
+                    else:
+                        neg.append(sample[0])
+                for neg_sample in neg:
+                    triplet.append(Triplet(query, pos, neg_sample))
+            else:
+                continue
         return cls(triplet)
 
 
