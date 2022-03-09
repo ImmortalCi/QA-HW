@@ -259,7 +259,7 @@ class Recaller(object):
         encoder_param_path = os.path.join(
             path, ranker_config.encoder_param_file)
 
-        if ranker_config == 'bert':
+        if ranker_config.encoder == 'bert':
             tokenizer = PretrainedTokenizer(path)
         else:
             tokenizer = CharTokenizer(
