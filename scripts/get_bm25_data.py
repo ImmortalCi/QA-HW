@@ -72,7 +72,7 @@ def getBM25Result(segmentQuestion, es, index, size):
             }
         }
     }
-    res = es.search(index=index, body=ds1, from_=0, size=size)
+    res = es.search(index=index, body=dsl, from_=0, size=size)
     return res['hits']['hits']
 
 
@@ -155,7 +155,11 @@ def post_process(result):
         candidates = []
         for candi in item['candidates']:
             if candi['standard'] == item['standard']:
-                candidates.append(['labels', get_second_max_score(candi, item['query'])])
+                second_score = get_second_max_score(candi, item['query'])
+                if second_score:  #如果可以找到同类下的其他问
+                    candidates.append(['labels', second_score])
+                else:  # 找不到同类下的其他问
+                    pass
             else:
                 candidates.append(get_max_score(candi))
         new_result.append({item['query']: candidates})
@@ -166,13 +170,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='import data to es'
     )
-    parser.add_argument('--train_file', default='data/1217-new/train.json',
+    parser.add_argument('--train_file', default='data/simCLUE_test.json',
                         help='train file')
     parser.add_argument('--host', default='localhost')
     parser.add_argument('--port', type=int, default=9200)
     parser.add_argument('--index', default='text-recall-es-hwnlp')
     parser.add_argument('--size', type=int, default=20)
-    parser.add_argument('--out_path', default='data/hwnlp/train_bm25_debug.txt')
+    parser.add_argument('--out_path', default='/data1/wtc/HW-QA/BM25_test_label.json')
     parser.add_argument('--num_process', type=int, default=10)
     args, _ = parser.parse_known_args()
 

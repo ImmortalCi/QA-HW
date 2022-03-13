@@ -20,6 +20,8 @@ def tokenize(text):
     if len(words) == 0:
         return [text]
 
+    return words
+
 
 def process(data):
     res = []
