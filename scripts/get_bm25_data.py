@@ -40,9 +40,9 @@ def getBM25Result(segmentQuestion, es, index, size):
                                         "operator": "OR",
                                         "prefix_length": 0,
                                         "max_expansions": 100,
-                                        "fuzzy_transposition": True,
+                                        "fuzzy_transpositions": True,
                                         "lenient": False,
-                                        "zero_terms, query": "NONE",
+                                        "zero_terms_query" : "NONE",
                                         "auto_generate_synonyms_phrase_query": True,
                                         "boost": 1.0
                                     }
@@ -100,7 +100,7 @@ def bm25ResultToTrainStyle(results):
         question2score = getHits(hits)
         if content in question2score:
             questionInfo['score'] = question2score[content]
-            if questionInfo[content] == trainStyle['max_score']:
+            if question2score[content] == trainStyle['max_score']:
                 trainStyle['top_score_question'] = content
         questionInfo.pop("content_after_pre_tokenizer")
         trainStyle['extends'].append(questionInfo)
@@ -201,7 +201,7 @@ if __name__ == '__main__':
     result = []
     for i in range(args.num_process):
         print(f'merge {i}th data')
-        result = manager[i]
+        result += manager[i]
     print(len(result))
     result, labels = post_process(result)
     p1, p3 = PrecisionAtNum(1), PrecisionAtNum(3)
