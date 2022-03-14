@@ -42,7 +42,7 @@ def process(data):
             })
         res.append({
             'st_question': standard,
-            'ex_question': new_extends
+            'ex_questions': new_extends
         })
     return res
 
@@ -165,7 +165,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='import data to es'
     )
-    parser.add_argument('--train_file', default='', help='train file')
+    parser.add_argument('--train_file', default='data/simCLUE_train.json', help='train file')
     parser.add_argument('--host', default='localhost')
     parser.add_argument('--port', type=int, default=9200)
     parser.add_argument("--index", default='text-recall-es-hwnlp')

@@ -144,7 +144,7 @@ def post_process(result):
 
     def get_second_max_score(candi, query):
         for x in sorted(candi['extends'], key=lambda x: x["score"], reverse=True):
-            if x != query:
+            if x['content'] != query:
                 return x['content']
         print("no positive chosen!!!")
 

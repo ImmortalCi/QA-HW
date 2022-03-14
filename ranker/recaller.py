@@ -126,7 +126,10 @@ class Recaller(object):
             if self._config.stage == 1:
                 training_triplet = TrainingSamples.from_corpus(train_pair)
             elif self._config.stage == 2:
-                training_triplet = TrainingSamples.from_corpus_stage2(train_pair)
+                if self._config.stage2_data == 'BM25':
+                    training_triplet = TrainingSamples.from_corpus_stage2_BM25(train_pair)
+                else:
+                    training_triplet = TrainingSamples.from_corpus_stage2(train_pair)
         elif self._config.match_mode == 'query_answer':
             training_triplet = TrainingSamples.QA_from_corpus(train_pair, queryid2str, answerid2str)
         return training_triplet, train_pair, test_pair

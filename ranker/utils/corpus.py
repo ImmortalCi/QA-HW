@@ -126,6 +126,30 @@ class TrainingSamples(object):
                 continue
         return cls(triplet)
 
+    @classmethod
+    def from_corpus_stage2_BM25(cls, corpus):
+        triplet = []
+        for pair in corpus:
+            query = pair.standard
+            neg = []
+            all_samples = pair.extend[:20]  # list
+            flag = False
+            for sample in all_samples:
+                if type(sample) == list:
+                    flag = True
+                    break
+            if flag:
+                for sample in all_samples:
+                    if type(sample) == list:
+                        pos = sample[1]
+                    else:
+                        neg.append(sample)
+                for neg_sample in neg:
+                    triplet.append(Triplet(query, pos, neg_sample))
+            else:
+                continue
+        return cls(triplet)
+
 
 
 

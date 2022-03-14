@@ -15,7 +15,7 @@ def main(config):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Text Recall")
     parser.add_argument('--encoder', help='encoder')
-    parser.add_argument('--device', default='', help='device')
+    parser.add_argument('--device', default='7', help='device')
     parser.add_argument('--remove_punctuation', action='store_true', help='remove_punctuation')
     parser.add_argument('--split_eval', action='store_true', help='split_eval')
 
@@ -35,7 +35,7 @@ if __name__ == '__main__':
     parser.add_argument('--threshold', type=float)
 
     parser.add_argument('--save_path', help='save path')
-    parser.add_argument('--train_file', default='data/simCLUE_train.json')
+    parser.add_argument('--train_file', default='')
     parser.add_argument('--test_file', default='data/test.json')
 
     # 为了cmedQA而增加的几个argument
@@ -44,7 +44,10 @@ if __name__ == '__main__':
     parser.add_argument('--answer_file', default='data/answer.csv')
 
     # 精排模型
-    parser.add_argument('--stage', default=1)  # 1代表初筛模型， 2代表精排模型
+    parser.add_argument('--stage', default=2)  # 1代表初筛模型， 2代表精排模型
+
+    # 精排模型训练集来源
+    parser.add_argument('--stage2_data', default='BM25', type=str)
 
     args, _ = parser.parse_known_args()
     print(vars(args))
