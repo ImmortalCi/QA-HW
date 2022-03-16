@@ -15,7 +15,7 @@ def main(config):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Text Recall")
     parser.add_argument('--encoder', help='encoder')
-    parser.add_argument('--device', default='7', help='device')
+    parser.add_argument('--device', default='5', help='device')
     parser.add_argument('--remove_punctuation', action='store_true', help='remove_punctuation')
     parser.add_argument('--split_eval', action='store_true', help='split_eval')
 
@@ -35,25 +35,28 @@ if __name__ == '__main__':
     parser.add_argument('--threshold', type=float)
 
     parser.add_argument('--save_path', help='save path')
-    parser.add_argument('--train_file', default='')
+    parser.add_argument('--train_file', default='data/train.json')
     parser.add_argument('--test_file', default='data/test.json')
 
-    # 为了cmedQA而增加的几个argument
-    parser.add_argument('--match_mode', default='query_answer')
-    parser.add_argument('--question_file', default='data/question.csv')
-    parser.add_argument('--answer_file', default='data/answer.csv')
+    # query - query
+    parser.add_argument('--match_mode', default='query_query')
+    
+    # query - answer
+    # parser.add_argument('--match_mode', default='query_answer')
+    # parser.add_argument('--question_file', default='data/question.csv')
+    # parser.add_argument('--answer_file', default='data/answer.csv')
 
     # 精排模型
     parser.add_argument('--stage', default=2)  # 1代表初筛模型， 2代表精排模型
 
     # 精排模型训练集来源
-    parser.add_argument('--stage2_data', default='BM25', type=str)
+    parser.add_argument('--stage2_data', default='1', type=str)
 
     args, _ = parser.parse_known_args()
-    print(vars(args))
 
     config = Config('default.ini')
     config.update(vars(args))
+
     if not os.path.exists(config.save_path):
         os.umask(0)
         os.makedirs(config.save_path)
@@ -64,4 +67,6 @@ if __name__ == '__main__':
         config.update({'device': 'cpu'})
     torch.set_num_threads(config.thread)
     torch.manual_seed(config.seed)
+    
+    print('config:\n', config)
     main(config)

@@ -226,7 +226,7 @@ class Recaller(object):
             else:
                 patience = 0
                 # 保存模型
-                logger.info(f"epoch {epoch}: save the best model, loss={loss:.4f}")
+                logger.info(f"epoch {epoch}: save the best model, loss={loss:.10f}")
                 self.save(save_path)
                 best_e = epoch
                 prev_loss = float(loss)

@@ -13,7 +13,7 @@ def _literal_eval_new(str):
 
 class Config(object):
     '''
-    类名：Config
+    类名: Config
     参数:
         path (str):
             配置文件路径
