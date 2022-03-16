@@ -44,6 +44,22 @@ class Corpus(object):
 
         return corpus
 
+    @classmethod
+    def load_BM25(cls, fname):  # 最外层是列表
+        pairs = []
+        with open(fname, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        for dic in data:
+            for key, value in dic.items():
+                pairs.append(QueryPair(key,value))
+
+        corpus = cls(pairs)
+
+        return corpus
+
+
+
     def sample(self, percent=1):
         result=[]
         for pair in self:

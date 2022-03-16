@@ -88,7 +88,10 @@ class Recaller(object):
     def _prepare_data(self, train_file, split_eval):
         logger.info("read pair training from training file")
         if self._config.match_mode == 'query_query':
-            train_pair = Corpus.load(train_file)
+            if self._config.stage2_data == 'BM25':
+                train_pair = Corpus.load_BM25(train_file)
+            else:
+                train_pair = Corpus.load(train_file)
         elif self._config.match_mode == 'query_answer':
             train_pair = QA_Corpus.load(train_file)
             queryid2str = query_id2str(self._config.question_file)
