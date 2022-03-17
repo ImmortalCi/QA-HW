@@ -8,7 +8,7 @@
 
 ### BM25 评估指标：
 
-使用elastic search跑的测试集结果
+使用elastic search跑的测试集结果(3.17更新)
 
 <img width="285" alt="image" src="https://user-images.githubusercontent.com/74886609/158788064-59cfc781-14aa-4ac0-9770-b7402267fad7.png">
 
@@ -21,6 +21,7 @@
 
 
 
-### BM25作为初筛下的指标：
+### BM25作为初筛下的指标（3.17更新）：
 
-<img width="240" alt="image" src="https://user-images.githubusercontent.com/74886609/158774846-6ad648b9-5b16-4bc8-a0c2-cb80eedd380b.png">
+<img width="267" alt="image" src="https://user-images.githubusercontent.com/74886609/158792735-06275f07-d939-4152-a4d6-bcdb3aa0bec6.png">
+
