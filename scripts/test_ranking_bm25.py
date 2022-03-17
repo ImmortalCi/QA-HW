@@ -1,10 +1,17 @@
+"""
+2021.3.17
+因为ES-BM25和fast_text输出的格式不同，所以BM25下的评估脚本单独写了一下
+"""
+
 import argparse
 import json
 import os
+import sys
 
+sys.path.append('.')
 import faiss
 import torch
-
+from tqdm import tqdm
 from ranker.recaller import Recaller
 from ranker.utils.metric import PrecisionAtNum
 
@@ -50,7 +57,7 @@ def get_search_result(test_data, recaller, index, sentences, extend2standard, k)
     vecs = vecs.cpu().numpy()
     faiss.normalize_L2(vecs)
     print('searching...')
-    distance, item = index.search(vecs, k=125*30)
+    distance, item = index.search(vecs, k=125 * 30)
     result = [[sentences[j] for j in i[:30]] for i in item]
     labels = []
     assert len(result) == len(golds)
@@ -85,8 +92,7 @@ def get_candidates(querys, item, sentences, extend2standard, k=30):
         for candidate_idx in item[i]:
             candidate = sentences[candidate_idx]
             standards = extend2standard.get(candidate, [candidate])
-            if candidate == querys[i]:
-                continue
+
             for standard in standards:
                 if standard not in prev_standard:
                     prev_standard.add(standard)
@@ -102,17 +108,99 @@ def get_candidates(querys, item, sentences, extend2standard, k=30):
     return all_candidates
 
 
+from torch.nn.functional import cosine_similarity
+from torch.nn.utils.rnn import pad_sequence
+
+
+def main(train, test, model):
+    global count
+    sentences = []
+    s2cluster = {}
+    for std, ext in train.items():
+        cluster = []
+        sentences.append(std)
+        cluster.append(std)
+        for e in ext:
+            sentences.append(e)
+            cluster.append(e)
+        s2cluster[std] = cluster
+        for e in ext:
+            s2cluster[e] = cluster
+    sentences = list(sorted(sentences))
+    s2id = {s: i for i, s in enumerate(sentences)}
+    # emb = []
+    # for s in tqdm(sentences):
+    #     emb.append(model.encode([s]))
+    # embeddings = torch.cat(emb, dim=0)
+    embeddings = model.encode(sentences)
+
+    result = []
+
+    test_data = test # 是一个list[dic]
+    for dic in tqdm(test_data):
+        for query, candidates in dic.items():
+            labels = [1 if c[0] == 'labels' else 0 for c in candidates]
+            candidates = [c[1] if c[0] == 'labels' else c for c in candidates]
+            # print(query)
+            # print(labels[:10])
+            # print(candidates[:10])
+            # candi_ids = [s2id[c] for c in candidates]
+            # cluster_size = [1] * len(candi_ids)
+            all_candidates, cluster_size = [], []
+            for c in candidates:
+                all_candidates.extend(s2cluster[c])
+                cluster_size.append(len(s2cluster[c]))
+            candi_ids = [s2id[x] for x in all_candidates]
+            candi_embs = embeddings[candi_ids]
+            query_emb = model.encode([query])
+            # candi_embs = model.encode(candidates)
+            # label_embedding = model.encode([candidates[0]])
+            # print(cosine_similarity(query_emb, label_embedding))
+            # print('⬆️上面正常应该输出1')
+            # print(label_embedding[0] == candi_embs[0])
+            # print('⬆️上面正常应该输出True')
+            # print(cosine_similarity(candi_embs[0:1], query_emb))
+            # print(cosine_similarity(candi_embs[1:2], query_emb))
+            # print(query_emb.sum())
+            # print(candi_embs[1].sum(), sentences[candi_ids[1]])
+            query_emb = query_emb.expand(len(candi_ids), -1)
+            similarity = cosine_similarity(query_emb, candi_embs)
+            # print(query)
+            # print(similarity[:10])
+            # print(candidates[:10])
+            # print('```````````````````````````````````````````````')
+            # count += 1
+            # if count == 100:
+            #     break
+            similarity = similarity.split(cluster_size, -1)
+            if len(similarity) == 0:
+                print(query)
+                print(candidates)
+                count += 1
+                continue
+            similarity = pad_sequence(similarity, True, -1)
+            scores, indices = similarity.max(-1)
+            scores, indices = scores.sort(dim=-1, descending=True)
+            sorted_labels = [labels[i] for i in indices]
+            # if sorted_labels != labels:
+            #     print(query, sorted_labels.index(1))
+            #     print(labels, sorted_labels)
+            result.append(sorted_labels)
+            # result.append(labels)
+    return result
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='faiss test'
     )
-    parser.add_argument('--train_file', default='data/train.json',
+    parser.add_argument('--train_file', default='data/simCLUE_train.json',
                         help='train file')
-    parser.add_argument('--test_file', default='data/train.json',
+    parser.add_argument('--test_file', default='/data1/wtc/HW-QA/BM25_test_label.json',
                         help='test file')
-    parser.add_argument('--device', default='-1',
+    parser.add_argument('--device', default='7',
                         help='device')
-    parser.add_argument('--save_path', default='save/debug',
+    parser.add_argument('--save_path', default='save/stage2_bm25',
                         help='device')
 
     args, _ = parser.parse_known_args()
@@ -128,22 +216,18 @@ if __name__ == '__main__':
 
     train_data = read_json(args.train_file)
     test_data = read_json(args.test_file)
-    with torch.no_grad():
-        index, sentences = import_faiss(train_data, recaller)
-    max_extend = 125
+    # # 取训练集前1000个评估
+    # count = 0
+    # new_test = dict()
+    # for key, value in test_data.items():
+    #     new_test[key] = value
+    #     count += 1
+    #     if count==1000:
+    #         break
+    # test_data = new_test
 
-    extend2standard = {}
-    for standard, extends in train_data.items():
-        for extend in extends:
-            if extend not in extend2standard:
-                extend2standard[extend] = [standard]
-            else:
-                print(
-                    f'warning: {extend} appear in more than one standard questions')
-                extend2standard[extend].append(standard)
-    with torch.no_grad():
-        labels, labels_standard = get_search_result(
-            test_data, recaller, index, sentences, extend2standard, k=30*max_extend)
+    count = 0
+    labels = main(train_data, test_data, recaller)
 
     p1, p3 = PrecisionAtNum(1), PrecisionAtNum(3)
     p5, p10 = PrecisionAtNum(5), PrecisionAtNum(10)
@@ -161,20 +245,5 @@ if __name__ == '__main__':
     print(p10)
     print(p20)
     print(p30)
-    print()
-    p1, p3 = PrecisionAtNum(1), PrecisionAtNum(3)
-    p5, p10 = PrecisionAtNum(5), PrecisionAtNum(10)
-    p20, p30 = PrecisionAtNum(20), PrecisionAtNum(30)
-    for label in labels_standard:
-        p1(label)
-        p3(label)
-        p5(label)
-        p10(label)
-        p20(label)
-        p30(label)
-    print(p1)
-    print(p3)
-    print(p5)
-    print(p10)
-    print(p20)
-    print(p30)
+
+    print(count)
