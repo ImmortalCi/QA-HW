@@ -141,52 +141,51 @@ def main(train, test, model):
         for query, candidates in dic.items():
             labels = [1 if c[0] == 'labels' else 0 for c in candidates]
             candidates = [c[1] if c[0] == 'labels' else c for c in candidates]
-            # print(query)
-            # print(labels[:10])
-            # print(candidates[:10])
-            # candi_ids = [s2id[c] for c in candidates]
-            # cluster_size = [1] * len(candi_ids)
-            all_candidates, cluster_size = [], []
-            for c in candidates:
-                all_candidates.extend(s2cluster[c])
-                cluster_size.append(len(s2cluster[c]))
-            candi_ids = [s2id[x] for x in all_candidates]
-            candi_embs = embeddings[candi_ids]
-            query_emb = model.encode([query])
-            # candi_embs = model.encode(candidates)
-            # label_embedding = model.encode([candidates[0]])
-            # print(cosine_similarity(query_emb, label_embedding))
-            # print('⬆️上面正常应该输出1')
-            # print(label_embedding[0] == candi_embs[0])
-            # print('⬆️上面正常应该输出True')
-            # print(cosine_similarity(candi_embs[0:1], query_emb))
-            # print(cosine_similarity(candi_embs[1:2], query_emb))
-            # print(query_emb.sum())
-            # print(candi_embs[1].sum(), sentences[candi_ids[1]])
-            query_emb = query_emb.expand(len(candi_ids), -1)
-            similarity = cosine_similarity(query_emb, candi_embs)
-            # print(query)
-            # print(similarity[:10])
-            # print(candidates[:10])
-            # print('```````````````````````````````````````````````')
-            # count += 1
-            # if count == 100:
-            #     break
-            similarity = similarity.split(cluster_size, -1)
-            if len(similarity) == 0:
-                print(query)
-                print(candidates)
-                count += 1
-                continue
-            similarity = pad_sequence(similarity, True, -1)
-            scores, indices = similarity.max(-1)
-            scores, indices = scores.sort(dim=-1, descending=True)
-            sorted_labels = [labels[i] for i in indices]
-            # if sorted_labels != labels:
-            #     print(query, sorted_labels.index(1))
-            #     print(labels, sorted_labels)
-            result.append(sorted_labels)
-            # result.append(labels)
+            if len(candidates) == 0:  # 没有candidates的情况
+                res = [0 for i in range(20)]
+                result.append(res)
+            else:
+                # print(query)
+                # print(labels[:10])
+                # print(candidates[:10])
+                # candi_ids = [s2id[c] for c in candidates]
+                # cluster_size = [1] * len(candi_ids)
+                all_candidates, cluster_size = [], []
+                for c in candidates:
+                    all_candidates.extend(s2cluster[c])
+                    cluster_size.append(len(s2cluster[c]))
+                candi_ids = [s2id[x] for x in all_candidates]
+                candi_embs = embeddings[candi_ids]
+                query_emb = model.encode([query])
+                # candi_embs = model.encode(candidates)
+                # label_embedding = model.encode([candidates[0]])
+                # print(cosine_similarity(query_emb, label_embedding))
+                # print('⬆️上面正常应该输出1')
+                # print(label_embedding[0] == candi_embs[0])
+                # print('⬆️上面正常应该输出True')
+                # print(cosine_similarity(candi_embs[0:1], query_emb))
+                # print(cosine_similarity(candi_embs[1:2], query_emb))
+                # print(query_emb.sum())
+                # print(candi_embs[1].sum(), sentences[candi_ids[1]])
+                query_emb = query_emb.expand(len(candi_ids), -1)
+                similarity = cosine_similarity(query_emb, candi_embs)
+                # print(query)
+                # print(similarity[:10])
+                # print(candidates[:10])
+                # print('```````````````````````````````````````````````')
+                # count += 1
+                # if count == 100:
+                #     break
+                similarity = similarity.split(cluster_size, -1)
+                similarity = pad_sequence(similarity, True, -1)
+                scores, indices = similarity.max(-1)
+                scores, indices = scores.sort(dim=-1, descending=True)
+                sorted_labels = [labels[i] for i in indices]
+                # if sorted_labels != labels:
+                #     print(query, sorted_labels.index(1))
+                #     print(labels, sorted_labels)
+                result.append(sorted_labels)
+                # result.append(labels)
     return result
 
 
@@ -246,4 +245,3 @@ if __name__ == '__main__':
     print(p20)
     print(p30)
 
-    print(count)
