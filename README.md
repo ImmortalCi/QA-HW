@@ -8,7 +8,10 @@
 
 ### BM25 评估指标：
 
-<img width="169" alt="image" src="https://user-images.githubusercontent.com/74886609/158774691-43eece39-ebf5-47e4-b96e-6977d755ce2b.png">
+使用elastic search跑的测试集结果
+
+<img width="285" alt="image" src="https://user-images.githubusercontent.com/74886609/158788064-59cfc781-14aa-4ac0-9770-b7402267fad7.png">
+
 
 ## 精排模型：
 
