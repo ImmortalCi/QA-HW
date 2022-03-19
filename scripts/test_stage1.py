@@ -4,8 +4,6 @@ import os
 
 import faiss
 import torch
-from tqdm import tqdm
-import numpy as np
 
 from ranker.recaller import Recaller
 from ranker.utils.metric import PrecisionAtNum
@@ -44,7 +42,7 @@ def import_faiss(data, recaller):
     return index, sentences
 
 
-def get_search_result(test_data, recaller, index, sentences, extend2standard, data_dict, k):
+def get_search_result(test_data, recaller, index, sentences, extend2standard, k):
     querys = [extend for _, extends in test_data.items() for extend in extends]
     golds = [standard for standard, extends in test_data.items()
              for _ in extends]
@@ -56,7 +54,7 @@ def get_search_result(test_data, recaller, index, sentences, extend2standard, da
     result = [[sentences[j] for j in i[:30]] for i in item]
     labels = []
     assert len(result) == len(golds)
-    for pred, gold in tqdm(zip(result, golds)):
+    for pred, gold in zip(result, golds):
         label = []
         for p in pred:
             if p == gold or gold in extend2standard.get(p, []):
@@ -66,43 +64,32 @@ def get_search_result(test_data, recaller, index, sentences, extend2standard, da
         labels.append(label)
 
     labels_standard = []
-    result = get_candidates(querys, item, sentences, extend2standard, distance, 30)
-    print('Writing candidates...')
-    for query, cand in tqdm(zip(querys, result)):
-        data_dict[query] = cand
-    for pred, gold in tqdm(zip(result, golds)):
+    result = get_candidates(querys, item, sentences, extend2standard, 30)
+    for pred, gold in zip(result, golds):
         label = []
         for p in pred:
-            if p[0] == gold or gold in extend2standard.get(p[0], []):
+            if p == gold or gold in extend2standard.get(p, []):
                 label.append(1)
             else:
                 label.append(0)
         labels_standard.append(label)
-    for i, key in tqdm(enumerate(data_dict)):
-        now_label = labels_standard[i]
-        try:
-            label_index = now_label.index(1)
-            data_dict[key][label_index] = ('label ', data_dict[key][label_index])
-        except ValueError:  # 前30个中没有正确答案
-            data_dict[key].append('------前30个candidates中没有label------')
     return labels, labels_standard
 
 
-def get_candidates(querys, item, sentences, extend2standard, distance, k=30):
+def get_candidates(querys, item, sentences, extend2standard, k=30):
     all_candidates = []
     for i in range(len(querys)):
         candidates = []
         finished = False
         prev_standard = set()
-        for candidate_idx, score in zip(item[i], distance[i]):
+        for candidate_idx in item[i]:
             candidate = sentences[candidate_idx]
             standards = extend2standard.get(candidate, [candidate])
-            if candidate == querys[i]:
-                continue
+
             for standard in standards:
                 if standard not in prev_standard:
                     prev_standard.add(standard)
-                    candidates.append((candidate, np.float(score)))
+                    candidates.append(candidate)
 
             if len(prev_standard) >= k:
                 all_candidates.append(candidates)
@@ -118,14 +105,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='faiss test'
     )
-    parser.add_argument('--train_file', default='data/simCLUE_train(1).json',
+    parser.add_argument('--train_file', default='data/simCLUE_train.json',
                         help='train file')
-    parser.add_argument('--test_file', default='data/simCLUE_train(1).json',
+    parser.add_argument('--test_file', default='data/simCLUE_test.json',
                         help='test file')
-    parser.add_argument('--device', default='0',
+    parser.add_argument('--device', default='6',
                         help='device')
-    parser.add_argument('--save_path', default='save/simCLUE_new',
-                        help='save path')
+    parser.add_argument('--save_path', default='save/stage1_3.15',
+                        help='device')
 
     args, _ = parser.parse_known_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = args.device
@@ -153,10 +140,9 @@ if __name__ == '__main__':
                 print(
                     f'warning: {extend} appear in more than one standard questions')
                 extend2standard[extend].append(standard)
-    data_dict = dict()  # 用于保存每个query的candidates
     with torch.no_grad():
         labels, labels_standard = get_search_result(
-            test_data, recaller, index, sentences, extend2standard, data_dict, k=30*max_extend)
+            test_data, recaller, index, sentences, extend2standard, k=30*max_extend)
 
     p1, p3 = PrecisionAtNum(1), PrecisionAtNum(3)
     p5, p10 = PrecisionAtNum(5), PrecisionAtNum(10)
@@ -191,12 +177,3 @@ if __name__ == '__main__':
     print(p10)
     print(p20)
     print(p30)
-
-    # for key, value in data_dict.items():
-    #     print(key)
-    #     print(value)
-    #     exit()
-
-    with open('data/train_candidates_label.json', 'w+', encoding='utf-8') as f:
-        json.dump(data_dict, f, indent=4, ensure_ascii=False)
-

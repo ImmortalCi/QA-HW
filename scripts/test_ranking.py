@@ -129,25 +129,51 @@ def main(train, test, model):
     embeddings = model.encode(sentences)
 
     result = []
+
+    count = 0
+
     for query, candidates in tqdm(test.items()):
-        labels = [1 if c[0] == 'label' else 0 for c in candidates[:30]]
-        candidates = [c[1][0] if c[0] == 'label' else c[0] for c in candidates[:30]]
-        candi_ids = [s2id[c] for c in candidates]
-        cluster_size = [1] * len(candi_ids)
+        labels = [1 if c[0] == 'label ' else 0 for c in candidates[:30]]
+        can_list = []
+        for candidate in candidates:
+            if type(candidate) == list:  # 列表说明有candidate
+                if candidate[0] == 'label ':
+                    can_list.append(candidate[1][0])
+                else:
+                    can_list.append(candidate[0])
+
+        # candidates = [c[1][0] if c[0] == 'label ' else c[0] for c in candidates[:30]]
+        # print(query)
+        # print(labels[:10])
+        # print(candidates[:10])
+        # candi_ids = [s2id[c] for c in candidates]
+        # cluster_size = [1] * len(candi_ids)
         all_candidates, cluster_size = [], []
-        for c in candidates:
+        for c in can_list:
             all_candidates.extend(s2cluster[c])
             cluster_size.append(len(s2cluster[c]))
         candi_ids = [s2id[x] for x in all_candidates]
         candi_embs = embeddings[candi_ids]
         query_emb = model.encode([query])
+        # candi_embs = model.encode(candidates)
+        # label_embedding = model.encode([candidates[0]])
+        # print(cosine_similarity(query_emb, label_embedding))
+        # print('⬆️上面正常应该输出1')
+        # print(label_embedding[0] == candi_embs[0])
+        # print('⬆️上面正常应该输出True')
+        # print(cosine_similarity(candi_embs[0:1], query_emb))
+        # print(cosine_similarity(candi_embs[1:2], query_emb))
         # print(query_emb.sum())
         # print(candi_embs[1].sum(), sentences[candi_ids[1]])
         query_emb = query_emb.expand(len(candi_ids), -1)
         similarity = cosine_similarity(query_emb, candi_embs)
-        # print(similarity[:10], candidates[:10], query)
-
-        # exit()
+        # print(query)
+        # print(similarity[:10])
+        # print(candidates[:10])
+        # print('```````````````````````````````````````````````')
+        # count += 1
+        # if count == 100:
+        #     break
         similarity = similarity.split(cluster_size, -1)
         similarity = pad_sequence(similarity, True, -1)
         scores, indices = similarity.max(-1)
@@ -155,7 +181,9 @@ def main(train, test, model):
         sorted_labels = [labels[i] for i in indices]
         # if sorted_labels != labels:
         #     print(query, sorted_labels.index(1))
+        #     print(labels, sorted_labels)
         result.append(sorted_labels)
+        # result.append(labels)
     return result
 
 
@@ -165,11 +193,11 @@ if __name__ == '__main__':
     )
     parser.add_argument('--train_file', default='data/simCLUE_train.json',
                         help='train file')
-    parser.add_argument('--test_file', default='test_candidates_label.json',
+    parser.add_argument('--test_file', default='/data1/wtc/HW-QA/fasttext_test_label.json',
                         help='test file')
-    parser.add_argument('--device', default='-1',
+    parser.add_argument('--device', default='7',
                         help='device')
-    parser.add_argument('--save_path', default='save/simCLUE',
+    parser.add_argument('--save_path', default='save/stage2_fasttext_3.15',
                         help='device')
 
     args, _ = parser.parse_known_args()
@@ -185,6 +213,15 @@ if __name__ == '__main__':
 
     train_data = read_json(args.train_file)
     test_data = read_json(args.test_file)
+    # # 取训练集前1000个评估
+    # count = 0
+    # new_test = dict()
+    # for key, value in test_data.items():
+    #     new_test[key] = value
+    #     count += 1
+    #     if count==1000:
+    #         break
+    # test_data = new_test
     labels = main(train_data, test_data, recaller)
 
     p1, p3 = PrecisionAtNum(1), PrecisionAtNum(3)
