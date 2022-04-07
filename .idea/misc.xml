@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.7 (QA)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Remote Python 3.7.11 (sftp://wtc@10.10.80.67:22/home/wtc/miniconda3/envs/HW-QA/bin/python)" project-jdk-type="Python SDK" />
 </project>
